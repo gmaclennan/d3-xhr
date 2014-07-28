@@ -1,4 +1,7 @@
-all: index.js
+all: node_modules/.install index.js
+
+node_modules/.install: package.json
+	npm install && touch node_modules/.install
 
 D3_FILES = \
 	start.js \
