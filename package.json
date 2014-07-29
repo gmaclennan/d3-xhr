@@ -1,6 +1,6 @@
 {
   "name": "d3-xhr",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "d3.xhr wrapped as an npm module",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,13 @@
   "author": "Gregor MacLennan",
   "license": "BSD",
   "devDependencies": {
+    "browserify": "^5.9.1",
     "d3": "^3.4.11",
-    "smash": "0.0.12"
+    "smash": "0.0.12",
+    "uglify-js": "^2.4.15"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gmaclennan/d3-xhr.git"
   }
 }
