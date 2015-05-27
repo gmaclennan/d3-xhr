@@ -19,5 +19,9 @@ D3_FILES = \
 	node_modules/d3/src/xhr/xhr.js \
 	end.js
 
-index.js: $(D3_FILES) node_modules/.install
+index.js: $(D3_FILES) node_modules/.install start.js
 	node_modules/.bin/smash $(D3_FILES) > $@
+	./patch index.js
+
+start.js: node_modules/.install
+	grep -v "!function()" node_modules/d3/src/start.js > $@

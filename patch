@@ -1,0 +1,3 @@
+#!/bin/sh
+sed -i '' 's/this.document/window.document/' $1
+sed -i '' 's/this.XDomainRequest/window.XDomainRequest/' $1
