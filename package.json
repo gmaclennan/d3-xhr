@@ -9,9 +9,9 @@
   "author": "Gregor MacLennan",
   "license": "BSD",
   "devDependencies": {
-    "browserify": "^5.9.1",
-    "d3": "^3.4.11",
-    "smash": "0.0.12",
+    "browserify": "^10.2.1",
+    "d3": "^3.5.5",
+    "smash": "^0.0.14",
     "uglify-js": "^2.4.15"
   },
   "repository": {

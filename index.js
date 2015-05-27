@@ -1,20 +1,20 @@
-var d3 = {version: "3.3.13"}; // semver
+  var d3 = {version: "3.5.5"}; // semver
 var d3_arraySlice = [].slice,
     d3_array = function(list) { return d3_arraySlice.call(list); }; // conversion for NodeLists
+var d3_document = window.document;
 
-var d3_document = document,
-    d3_documentElement = d3_document.documentElement,
-    d3_window = window;
+function d3_documentElement(node) {
+  return node
+      && (node.ownerDocument // node is a Node
+      || node.document // node is a Window
+      || node).documentElement; // node is a Document
+}
 
-// Redefine d3_array if the browser doesn’t support slice-based conversion.
-try {
-  d3_array(d3_documentElement.childNodes)[0].nodeType;
-} catch(e) {
-  d3_array = function(list) {
-    var i = list.length, array = new Array(i);
-    while (i--) array[i] = list[i];
-    return array;
-  };
+function d3_window(node) {
+  return node
+      && ((node.ownerDocument && node.ownerDocument.defaultView) // node is a Node
+        || (node.document && node) // node is a Window
+        || node.defaultView); // node is a Document
 }
 function d3_identity(d) {
   return d;
@@ -36,80 +36,94 @@ function d3_rebind(target, source, method) {
   };
 }
 function d3_class(ctor, properties) {
-  try {
-    for (var key in properties) {
-      Object.defineProperty(ctor.prototype, key, {
-        value: properties[key],
-        enumerable: false
-      });
-    }
-  } catch (e) {
-    ctor.prototype = properties;
+  for (var key in properties) {
+    Object.defineProperty(ctor.prototype, key, {
+      value: properties[key],
+      enumerable: false
+    });
   }
 }
 
-d3.map = function(object) {
+d3.map = function(object, f) {
   var map = new d3_Map;
-  if (object instanceof d3_Map) object.forEach(function(key, value) { map.set(key, value); });
-  else for (var key in object) map.set(key, object[key]);
+  if (object instanceof d3_Map) {
+    object.forEach(function(key, value) { map.set(key, value); });
+  } else if (Array.isArray(object)) {
+    var i = -1,
+        n = object.length,
+        o;
+    if (arguments.length === 1) while (++i < n) map.set(i, object[i]);
+    else while (++i < n) map.set(f.call(object, o = object[i], i), o);
+  } else {
+    for (var key in object) map.set(key, object[key]);
+  }
   return map;
 };
 
-function d3_Map() {}
+function d3_Map() {
+  this._ = Object.create(null);
+}
+
+var d3_map_proto = "__proto__",
+    d3_map_zero = "\0";
 
 d3_class(d3_Map, {
   has: d3_map_has,
   get: function(key) {
-    return this[d3_map_prefix + key];
+    return this._[d3_map_escape(key)];
   },
   set: function(key, value) {
-    return this[d3_map_prefix + key] = value;
+    return this._[d3_map_escape(key)] = value;
   },
   remove: d3_map_remove,
   keys: d3_map_keys,
   values: function() {
     var values = [];
-    this.forEach(function(key, value) { values.push(value); });
+    for (var key in this._) values.push(this._[key]);
     return values;
   },
   entries: function() {
     var entries = [];
-    this.forEach(function(key, value) { entries.push({key: key, value: value}); });
+    for (var key in this._) entries.push({key: d3_map_unescape(key), value: this._[key]});
     return entries;
   },
   size: d3_map_size,
   empty: d3_map_empty,
   forEach: function(f) {
-    for (var key in this) if (key.charCodeAt(0) === d3_map_prefixCode) f.call(this, key.substring(1), this[key]);
+    for (var key in this._) f.call(this, d3_map_unescape(key), this._[key]);
   }
 });
 
-var d3_map_prefix = "\0", // prevent collision with built-ins
-    d3_map_prefixCode = d3_map_prefix.charCodeAt(0);
+function d3_map_escape(key) {
+  return (key += "") === d3_map_proto || key[0] === d3_map_zero ? d3_map_zero + key : key;
+}
+
+function d3_map_unescape(key) {
+  return (key += "")[0] === d3_map_zero ? key.slice(1) : key;
+}
 
 function d3_map_has(key) {
-  return d3_map_prefix + key in this;
+  return d3_map_escape(key) in this._;
 }
 
 function d3_map_remove(key) {
-  key = d3_map_prefix + key;
-  return key in this && delete this[key];
+  return (key = d3_map_escape(key)) in this._ && delete this._[key];
 }
 
 function d3_map_keys() {
   var keys = [];
-  this.forEach(function(key) { keys.push(key); });
+  for (var key in this._) keys.push(d3_map_unescape(key));
   return keys;
 }
 
 function d3_map_size() {
   var size = 0;
-  for (var key in this) if (key.charCodeAt(0) === d3_map_prefixCode) ++size;
+  for (var key in this._) ++size;
   return size;
 }
 
 function d3_map_empty() {
-  for (var key in this) if (key.charCodeAt(0) === d3_map_prefixCode) return false;
+  for (var key in this._) return false;
   return true;
 }
 
@@ -129,8 +143,8 @@ d3_dispatch.prototype.on = function(type, listener) {
 
   // Extract optional namespace, e.g., "click.foo"
   if (i >= 0) {
-    name = type.substring(i + 1);
-    type = type.substring(0, i);
+    name = type.slice(i + 1);
+    type = type.slice(0, i);
   }
 
   if (type) return arguments.length < 2
@@ -198,7 +212,7 @@ function d3_xhr(url, mimeType, response, callback) {
       responseType = null;
 
   // If IE does not support CORS, use XDomainRequest.
-  if (d3_window.XDomainRequest
+  if (window.XDomainRequest
       && !("withCredentials" in request)
       && /^(http(s)?:)?\/\//.test(url)) request = new XDomainRequest;
 
@@ -208,7 +222,7 @@ function d3_xhr(url, mimeType, response, callback) {
 
   function respond() {
     var status = request.status, result;
-    if (!status && request.responseText || status >= 200 && status < 300 || status === 304) {
+    if (!status && d3_xhrHasResponse(request) || status >= 200 && status < 300 || status === 304) {
       try {
         result = response.call(xhr, request);
       } catch (e) {
@@ -293,6 +307,13 @@ function d3_xhr_fixCallback(callback) {
   return callback.length === 1
       ? function(error, request) { callback(error == null ? request : null); }
       : callback;
+}
+
+function d3_xhrHasResponse(request) {
+  var type = request.responseType;
+  return type && type !== "text"
+      ? request.response // null on error
+      : request.responseText; // "" on error
 }
 
 module.exports = d3.xhr;
